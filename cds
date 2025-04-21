@@ -2109,87 +2109,264 @@ organization, Hobbies, etc...) With validation.
 
 24.Develop a ecommerce platform Ubercart using PHP.
 
+-- Create the eCommerce database
 CREATE DATABASE ecommerce;
 
+-- Use the eCommerce database
 USE ecommerce;
 
--- Create a table to store product details
+-- Table for storing product details
 CREATE TABLE products (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100),
-    description TEXT,
-    price DECIMAL(10, 2),
-    image VARCHAR(255)
+    id INT AUTO_INCREMENT PRIMARY KEY,     -- Auto-increment ID for each product
+    name VARCHAR(100) NOT NULL,            -- Product name
+    description TEXT NOT NULL,             -- Product description
+    price DECIMAL(10,2) NOT NULL,          -- Product price
+    image VARCHAR(255) NOT NULL            -- Image file name for the product
 );
 
--- Create a table to store orders (basic checkout details)
-CREATE TABLE orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_name VARCHAR(100),
-    total DECIMAL(10, 2),
-    status VARCHAR(50) DEFAULT 'Pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Table for storing cart items
+CREATE TABLE cart (
+    id INT AUTO_INCREMENT PRIMARY KEY,     -- Auto-increment ID for each cart item
+    product_id INT NOT NULL,                -- Product ID that was added to the cart
+    quantity INT NOT NULL,                  -- Quantity of the product added to the cart
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE  -- Foreign key constraint
 );
 
--- Create a table for order items (products added to the cart)
-CREATE TABLE order_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT,
-    product_id INT,
-    quantity INT,
-    FOREIGN KEY(order_id) REFERENCES orders(id),
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
+-- Insert some sample products into the products table
+INSERT INTO products (name, description, price, image)
+VALUES 
+('Laptop', 'A high-performance laptop', 999.99, 'laptop.jpg'),
+('Smartphone', 'Latest model smartphone', 499.99, 'smartphone.jpg'),
+('Headphones', 'Noise-canceling headphones', 199.99, 'headphones.jpg'),
+('Watch', 'Stylish wristwatch', 149.99, 'watch.jpg');
 
-Db.php
+
 
 <?php
+// Database connection
 $servername = "localhost";
-$username = "root";
-$password = "";
+$username = "root";  // Your MySQL username
+$password = "";      // Your MySQL password
 $dbname = "ecommerce";
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 
+// Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-?>
 
+// Add to cart functionality
+if (isset($_GET['action']) && $_GET['action'] == 'add') {
+    $product_id = $_GET['id'];
+    $quantity = $_GET['quantity'] ?? 1; // Default quantity of 1 if not specified
 
+    // Insert the product into the cart table
+    $sql = "INSERT INTO cart (product_id, quantity) VALUES ($product_id, $quantity)";
+    if ($conn->query($sql) === TRUE) {
+        echo "Product added to cart!";
+    } else {
+        echo "Error: " . $conn->error;
+    }
+}
 
-Index.php
+// Remove item from cart
+if (isset($_GET['action']) && $_GET['action'] == 'remove') {
+    $cart_id = $_GET['id'];
+    $sql_remove = "DELETE FROM cart WHERE id = $cart_id";
+    if ($conn->query($sql_remove) === TRUE) {
+        echo "Item removed from cart!";
+    } else {
+        echo "Error: " . $conn->error;
+    }
+}
 
-<?php
-include('db.php');
-
+// Get all products from the database
 $sql = "SELECT * FROM products";
 $result = $conn->query($sql);
-?>
 
+// View Cart functionality
+if (isset($_GET['action']) && $_GET['action'] == 'viewCart') {
+    // Fetch all cart items
+    $sql_cart = "SELECT cart.id, products.name, products.price, cart.quantity
+                 FROM cart
+                 JOIN products ON cart.product_id = products.id";
+    $cart_result = $conn->query($sql_cart);
+}
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>eCommerce Platform</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        h1 {
+            margin: 0;
+        }
+
+        .cart {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .cart a {
+            color: white;
+            text-decoration: none;
+            background-color: #f39c12;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .cart a:hover {
+            background-color: #e67e22;
+        }
+
+        .product-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px;
+        }
+
+        .product {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 10px;
+            padding: 20px;
+            width: 200px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .product:hover {
+            transform: scale(1.05);
+        }
+
+        .product img {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .product h3 {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .product p {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .add-to-cart {
+            text-decoration: none;
+            background-color: #27ae60;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        .add-to-cart:hover {
+            background-color: #2ecc71;
+        }
+
+        .cart-list {
+            margin: 20px;
+            padding: 20px;
+        }
+
+        .cart-item {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .checkout {
+            background-color: #f39c12;
+            padding: 10px;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .checkout:hover {
+            background-color: #e67e22;
+        }
+
+        .quantity {
+            width: 50px;
+        }
+    </style>
 </head>
 <body>
 
-<h1>Welcome to Our Store</h1>
-
-<?php while($product = $result->fetch_assoc()) { ?>
-    <div>
-        <h2><?php echo $product['name']; ?></h2>
-        <p><?php echo $product['description']; ?></p>
-        <p>Price: $<?php echo $product['price']; ?></p>
-        <img src="<?php echo $product['image']; ?>" alt="Product Image" width="100">
-        <form action="cart.php" method="POST">
-            <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
-            <button type="submit">Add to Cart</button>
-        </form>
+<header>
+    <h1>Welcome to Our eCommerce Store</h1>
+    <div class="cart">
+        <a href="?action=viewCart">View Cart</a>
     </div>
-<?php } ?>
+</header>
+
+<?php if (!isset($_GET['action']) || $_GET['action'] != 'viewCart'): ?>
+    <section class="product-list">
+        <?php while($row = $result->fetch_assoc()) { ?>
+            <div class="product">
+                <img src="images/<?php echo $row['image']; ?>" alt="<?php echo $row['name']; ?>">
+                <h3><?php echo $row['name']; ?></h3>
+                <p><?php echo $row['description']; ?></p>
+                <p>Price: $<?php echo number_format($row['price'], 2); ?></p>
+                <form action="" method="GET">
+                    <input type="hidden" name="action" value="add">
+                    <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
+                    <input type="number" name="quantity" value="1" class="quantity" min="1">
+                    <button type="submit" class="add-to-cart">Add to Cart</button>
+                </form>
+            </div>
+        <?php } ?>
+    </section>
+<?php else: ?>
+    <section class="cart-list">
+        <h2>Your Shopping Cart</h2>
+        <?php while($row = $cart_result->fetch_assoc()) { ?>
+            <div class="cart-item">
+                <h3><?php echo $row['name']; ?></h3>
+                <p>Price: $<?php echo number_format($row['price'], 2); ?></p>
+                <p>Quantity: <?php echo $row['quantity']; ?></p>
+                <p>Total: $<?php echo number_format($row['price'] * $row['quantity'], 2); ?></p>
+                <a href="?action=remove&id=<?php echo $row['id']; ?>" class="add-to-cart" style="background-color: #e74c3c;">Remove</a>
+            </div>
+        <?php } ?>
+        <p><a href="index.php" class="checkout">Proceed to Checkout</a></p>
+    </section>
+<?php endif; ?>
 
 </body>
 </html>
@@ -2199,100 +2376,6 @@ $conn->close();
 ?>
 
 
-Cart.php
-
-<?php
-session_start();
-include('db.php');
-
-// If the cart doesn't exist, create an empty array
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
-}
-
-// Check if a product was added to the cart
-if (isset($_POST['product_id'])) {
-    $product_id = $_POST['product_id'];
-
-    // Get the product details from the database
-    $sql = "SELECT * FROM products WHERE id = $product_id";
-    $result = $conn->query($sql);
-    $product = $result->fetch_assoc();
-
-    // Add the product to the cart (quantity is default 1)
-    $_SESSION['cart'][] = [
-        'product_id' => $product['id'],
-        'name' => $product['name'],
-        'price' => $product['price'],
-        'quantity' => 1
-    ];
-}
-
-header("Location: view_cart.php"); // Redirect to view the cart
-?>
-
-View_cart.php
-
-<?php
-session_start();
-include('db.php');
-
-if (isset($_SESSION['cart']) && count($_SESSION['cart']) > 0) {
-    $total = 0;
-    echo "<h2>Your Cart</h2><ul>";
-    foreach ($_SESSION['cart'] as $item) {
-        echo "<li>" . $item['name'] . " - $" . $item['price'] . " x " . $item['quantity'] . "</li>";
-        $total += $item['price'] * $item['quantity'];
-    }
-    echo "</ul>";
-    echo "<p>Total: $$total</p>";
-    echo "<form action='checkout.php' method='POST'>
-            <button type='submit'>Proceed to Checkout</button>
-          </form>";
-} else {
-    echo "<p>Your cart is empty.</p>";
-}
-?>
-
-Checkout.php
-
-<?php
-session_start();
-include('db.php');
-
-// If the cart is empty, redirect to the homepage
-if (empty($_SESSION['cart'])) {
-    header("Location: index.php");
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Get customer information
-    $customer_name = "John Doe"; // You can customize this with form inputs
-    $total = 0;
-
-    // Insert the order into the orders table
-    $sql = "INSERT INTO orders (customer_name, total) VALUES ('$customer_name', 0)";
-    if ($conn->query($sql) === TRUE) {
-        $order_id = $conn->insert_id; // Get the last inserted order ID
-
-        // Insert each product in the cart into the order_items table
-        foreach ($_SESSION['cart'] as $item) {
-            $sql = "INSERT INTO order_items (order_id, product_id, quantity) VALUES ('$order_id', '{$item['product_id']}', '{$item['quantity']}')";
-            $conn->query($sql);
-            $total += $item['price'] * $item['quantity'];
-        }
-
-        // Update the total price in the orders table
-        $conn->query("UPDATE orders SET total = '$total' WHERE id = '$order_id'");
-
-        // Clear the cart
-        unset($_SESSION['cart']);
-
-        echo "<p>Order placed successfully! Your total is $$total.</p>";
-    }
-}
-?>
 
 
 25.Build a grocery store application using PHP and MySQL
@@ -3074,11 +3157,6 @@ CREATE TABLE tasks (
     status ENUM('pending', 'completed') DEFAULT 'pending'
 );
 
-
-
-30.Design restaurant data entry form using Table Layout and show different
-events using activity class.
-
 33.Install Ruby Environment Setup and Write a Ruby program which accept
 the user's first and last name and print them in reverse order with a space
 between them.
@@ -3133,7 +3211,7 @@ Mail.defaults do
     domain: "yourdomain.com",
     user_name: "irfantadvi448@gmail.com",
     password: "wjwyagxkpmdqmmgf",
-    authentication: 'plain',
+    authentication: 'plain', 
     enable_starttls_auto: true
   }
 end
