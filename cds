@@ -3121,6 +3121,9 @@ result.erb
 
 34.Write a Ruby Script to send an Email to a specific User.
 
+Steps
+gem install mail
+
 require 'mail'
 
 Mail.defaults do
